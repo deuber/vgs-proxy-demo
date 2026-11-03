@@ -1,0 +1,976 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>VGS Proxy Demo</title>
+<meta name="description" content="An interactive, in-browser walkthrough of how the Very Good Security (VGS) inbound and outbound proxies redact and reveal sensitive data.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,440;9..144,560;9..144,650&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme: light;
+    --bg:#F2F4EE; --surface:#FFFFFF; --surface-2:#FAFBF6;
+    --ink:#141A11; --ink-muted:#565F51; --ink-faint:#8B9382;
+    --accent:#A97A2A; --accent-ink:#5E4315; --err:#B4573F;
+    --border:#DCE1D1; --border-strong:#C4CBB6;
+    --console-bg:#12150D; --console-ink:#CDD3C1; --console-accent:#E0A94D; --console-border:#2A2E20;
+    --console-raw:#E08769;
+    --shadow: 0 1px 2px rgba(20,26,17,0.04), 0 6px 20px -12px rgba(20,26,17,0.18);
+    --note-bg:#EEF4E4; --note-border:#CBDCB2;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme: dark;
+      --bg:#14160F; --surface:#1B1F15; --surface-2:#20251A;
+      --ink:#ECEEE3; --ink-muted:#A7AE9A; --ink-faint:#6E7563;
+      --accent:#D7A24B; --accent-ink:#F3D9A1; --err:#D9785E;
+      --border:#2B3023; --border-strong:#3B412F;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 10px 28px -14px rgba(0,0,0,0.55);
+      --note-bg:#1E2416; --note-border:#333C25;
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --bg:#14160F; --surface:#1B1F15; --surface-2:#20251A; --ink:#ECEEE3;
+    --ink-muted:#A7AE9A; --ink-faint:#6E7563; --accent:#D7A24B; --accent-ink:#F3D9A1; --err:#D9785E;
+    --border:#2B3023; --border-strong:#3B412F;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 10px 28px -14px rgba(0,0,0,0.55);
+    --note-bg:#1E2416; --note-border:#333C25;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Public Sans", -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{ background:var(--accent); color:var(--surface); }
+  .mono{ font-family:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace; }
+  .page{ max-width:920px; margin:0 auto; padding:56px 28px 80px; }
+  @media (max-width:520px){ .page{ padding:36px 16px 64px; } }
+
+  header.masthead{ display:flex; flex-direction:column; gap:14px; padding-bottom:32px; border-bottom:1px solid var(--border-strong); }
+  .eyebrow{ font-family:"IBM Plex Mono", monospace; font-size:11.5px; font-weight:500; letter-spacing:0.14em; text-transform:uppercase; color:var(--accent-ink); }
+  h1{ font-family:"Fraunces", Georgia, serif; font-optical-sizing:auto; font-weight:650; font-size:clamp(34px, 5vw, 48px); line-height:1.04; letter-spacing:-0.01em; margin:0; text-wrap:balance; color:var(--ink); }
+  .dek{ font-size:16.5px; line-height:1.55; color:var(--ink-muted); max-width:62ch; margin:0; }
+  .meta-row{ display:flex; flex-wrap:wrap; gap:6px 18px; margin-top:6px; }
+  .meta-row span{ font-family:"IBM Plex Mono", monospace; font-size:12px; color:var(--ink-faint); white-space:nowrap; }
+  .meta-row span b{ color:var(--ink-muted); font-weight:500; }
+
+  .note{ background:var(--note-bg); border:1px solid var(--note-border); border-radius:10px; padding:12px 16px; font-size:13px; line-height:1.55; margin-top:24px; }
+  .note a{ color:var(--accent-ink); }
+  .note code{ background:var(--surface); padding:1px 5px; border-radius:4px; }
+
+  section{ margin-top:52px; }
+  .section-head{ display:flex; align-items:baseline; justify-content:space-between; gap:16px; margin-bottom:18px; flex-wrap:wrap; }
+  h2{ font-family:"Fraunces", Georgia, serif; font-weight:600; font-size:22px; letter-spacing:-0.005em; margin:0; color:var(--ink); }
+  .section-note{ font-family:"IBM Plex Mono", monospace; font-size:11.5px; color:var(--ink-faint); }
+  .lede{ font-size:14.5px; line-height:1.6; color:var(--ink-muted); margin:-6px 0 18px; max-width:68ch; }
+
+  .flow-toggle{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .flow-btn{
+    font-family:"IBM Plex Mono", monospace; font-size:11.5px;
+    padding:7px 12px; border-radius:99px; border:1px solid var(--border-strong);
+    background:var(--surface); color:var(--ink-muted); cursor:pointer;
+    transition:background .15s ease, color .15s ease, border-color .15s ease;
+  }
+  .flow-btn:hover{ border-color:var(--accent); color:var(--ink); }
+  .flow-btn.active{ background:var(--accent); border-color:var(--accent); color:var(--surface); }
+  .flow-btn.active.err{ background:var(--err); border-color:var(--err); }
+  .flow-btn:focus-visible, .run-btn:focus-visible, input:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .toggle-label{ font-family:"IBM Plex Mono", monospace; font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-faint); margin-right:2px; }
+
+  .controls{ display:flex; flex-wrap:wrap; gap:14px 28px; align-items:center; margin:18px 0 14px; }
+  .run-row{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+  .run-btn{
+    font-family:"Public Sans", sans-serif; font-size:14px; font-weight:600;
+    padding:10px 16px; border-radius:8px; border:1px solid var(--ink); background:var(--ink); color:var(--bg);
+    cursor:pointer; display:inline-flex; align-items:center; gap:8px;
+  }
+  .run-btn .n{ font-family:"IBM Plex Mono", monospace; font-size:11px; font-weight:500; opacity:0.7; }
+  .run-btn.secondary{ background:var(--surface); color:var(--ink); border-color:var(--border-strong); }
+  .run-btn:disabled{ opacity:0.4; cursor:not-allowed; }
+
+  /* form */
+  .field{ display:flex; flex-direction:column; gap:5px; }
+  .field label{ font-size:12px; font-weight:600; color:var(--ink-muted); }
+  .field input{
+    font-family:"IBM Plex Mono", monospace; font-size:13.5px; padding:9px 11px; border-radius:7px;
+    border:1px solid var(--border-strong); background:var(--surface-2); color:var(--ink); width:100%;
+  }
+  .form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .form-grid .full{ grid-column:1 / -1; }
+  .testcards{ display:flex; gap:6px; flex-wrap:wrap; }
+  .testcards button{ font-family:"IBM Plex Mono", monospace; font-size:10.5px; padding:3px 8px; border-radius:5px; border:1px solid var(--border); background:var(--surface-2); color:var(--ink-muted); cursor:pointer; }
+  .testcards button:hover{ border-color:var(--accent); color:var(--ink); }
+
+  .filters{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:2px; }
+  .filters li label{ display:grid; grid-template-columns:18px 1fr auto; gap:10px; align-items:center; padding:7px 8px; border-radius:6px; cursor:pointer; }
+  .filters li label:hover{ background:var(--surface-2); }
+  .filters input{ accent-color:var(--accent); width:15px; height:15px; margin:0; }
+  .filters .fname{ font-size:13.5px; color:var(--ink); }
+  .filters .fpath{ font-family:"IBM Plex Mono", monospace; font-size:11px; color:var(--ink-faint); }
+  .fmt-row{ display:flex; flex-direction:column; gap:8px; padding-top:12px; border-top:1px solid var(--border); }
+  .fmt-row .flow-toggle .flow-btn{ font-size:10.5px; padding:5px 10px; }
+  .fmt-hint{ font-size:12px; color:var(--ink-faint); line-height:1.45; }
+
+  /* diagram */
+  .pulse{ opacity:0; transition:cx .5s cubic-bezier(.4,0,.2,1), opacity .2s ease, fill .2s ease; fill:var(--accent); }
+  .pulse.raw{ fill:var(--err); }
+  .node rect{ fill:var(--surface); transition:stroke .2s ease, opacity .2s ease; }
+  .node.vgs rect{ fill:color-mix(in srgb, var(--accent) 7%, var(--surface)); }
+  .node-hit rect{ stroke:var(--accent); stroke-width:2; }
+  .node-hit.raw rect{ stroke:var(--err); }
+  .node-miss{ opacity:0.32; }
+  .node-miss rect{ stroke-dasharray:4 3; }
+  .lbl-raw{ fill:var(--err); }
+  .lbl-alias{ fill:var(--accent); }
+  .zone{ fill:none; stroke-width:1.3; stroke-dasharray:5 4; transition:stroke .2s ease; stroke:var(--border-strong); }
+  .zone.raw{ stroke:var(--err); fill:color-mix(in srgb, var(--err) 6%, transparent); }
+  .zone.clean{ stroke:var(--accent); fill:color-mix(in srgb, var(--accent) 5%, transparent); }
+  .zone-label{ font-family:"IBM Plex Mono", monospace; font-size:10px; letter-spacing:0.06em; fill:var(--ink-faint); }
+  .zone-label.raw{ fill:var(--err); }
+  .zone-label.clean{ fill:var(--accent-ink); }
+  @media (prefers-reduced-motion: reduce){ .pulse{ transition:none; } }
+
+  figure.diagram{ margin:0; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:22px 20px 18px; box-shadow:var(--shadow); }
+  figure.diagram svg{ display:block; width:100%; height:auto; color:var(--ink); }
+  figcaption{ margin-top:14px; font-size:13.5px; color:var(--ink-muted); line-height:1.5; border-top:1px solid var(--border); padding-top:12px; }
+  .legend{ display:flex; gap:16px; flex-wrap:wrap; margin-top:10px; font-family:"IBM Plex Mono", monospace; font-size:11px; color:var(--ink-faint); }
+  .legend i{ display:inline-block; width:8px; height:8px; border-radius:99px; margin-right:6px; vertical-align:middle; }
+
+  .flow-result{ margin-top:14px; display:flex; flex-direction:column; gap:8px; }
+  .chip{
+    display:inline-flex; align-items:flex-start; gap:8px; width:fit-content; max-width:100%;
+    font-family:"IBM Plex Mono", monospace; font-size:12px; line-height:1.5;
+    padding:8px 12px; border-radius:8px; border:1px solid var(--border);
+    background:var(--surface); color:var(--ink);
+  }
+  .chip.err{ border-color:color-mix(in srgb, var(--err) 45%, transparent); }
+  .chip .dot{ width:7px; height:7px; border-radius:99px; background:var(--accent); flex:none; display:inline-block; margin-top:6px; }
+  .chip.err .dot{ background:var(--err); }
+
+  .grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:680px){ .grid, .form-grid{ grid-template-columns:1fr; } }
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:20px 20px 18px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:12px; min-width:0; }
+  .card-label{
+    font-family:"IBM Plex Mono", monospace; font-size:11.5px; color:var(--accent-ink);
+    background:color-mix(in srgb, var(--accent) 14%, transparent);
+    border:1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    padding:3px 8px; border-radius:5px; width:fit-content; letter-spacing:0.01em;
+  }
+  .card-label.err{ color:var(--err); background:color-mix(in srgb, var(--err) 12%, transparent); border-color:color-mix(in srgb, var(--err) 35%, transparent); }
+  .card-label.muted{ color:var(--ink-faint); background:var(--surface-2); border-color:var(--border); }
+  .card-title{ font-size:14px; color:var(--ink-muted); line-height:1.45; }
+  .card-head{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+  .tally{ font-family:"IBM Plex Mono", monospace; font-size:11px; color:var(--ink-faint); }
+  .tally.raw{ color:var(--err); }
+
+  .console{ background:var(--console-bg); color:var(--console-ink); border:1px solid var(--console-border); border-radius:8px; padding:12px 14px; font-family:"IBM Plex Mono", monospace; font-size:11.5px; line-height:1.6; overflow-x:auto; white-space:pre; margin:0; }
+  .console.wrap{ white-space:pre-wrap; word-break:break-all; }
+  .console .k{ color:#8A9280; }
+  .console .dim{ color:#5C6353; }
+  .console .num{ color:#B7C3A0; }
+  .console .raw{ color:var(--console-raw); background:rgba(224,135,105,0.12); border-radius:3px; }
+  .console .alias{ color:var(--console-accent); background:rgba(224,169,77,0.10); border-radius:3px; }
+  .console .req{ color:#E9ECDF; }
+  .console-empty{ color:#5C6353; font-style:italic; }
+  .pre-wrap{ position:relative; }
+  .copy-btn{
+    position:absolute; top:6px; right:6px; font-family:"IBM Plex Mono", monospace; font-size:10.5px;
+    padding:3px 7px; border-radius:5px; border:1px solid var(--console-border); background:var(--console-bg);
+    color:var(--console-ink); opacity:0.6; cursor:pointer;
+  }
+  .copy-btn:hover{ opacity:1; border-color:var(--accent); }
+
+  table.vault{ width:100%; border-collapse:collapse; font-family:"IBM Plex Mono", monospace; font-size:11.5px; }
+  table.vault th{ text-align:left; font-weight:500; color:var(--ink-faint); font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em; padding:0 8px 6px 0; border-bottom:1px solid var(--border); }
+  table.vault td{ padding:7px 8px 7px 0; border-bottom:1px solid var(--border); vertical-align:top; word-break:break-all; }
+  table.vault td.a{ color:var(--accent-ink); }
+  table.vault td.v{ color:var(--err); }
+  table.vault .st{ font-size:10px; color:var(--ink-faint); }
+  .empty{ padding:18px; text-align:center; color:var(--ink-faint); font-size:13px; border:1px dashed var(--border-strong); border-radius:8px; }
+
+  .aside{ margin-top:16px; display:grid; grid-template-columns:auto 1fr; gap:14px 16px; align-items:start; background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:18px 20px; }
+  .aside .tag{ font-family:"IBM Plex Mono", monospace; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--accent-ink); padding-top:2px; white-space:nowrap; }
+  .aside .tag.err{ color:var(--err); }
+  .aside p{ margin:0 0 8px; font-size:14px; line-height:1.55; color:var(--ink-muted); }
+  .aside p:last-child{ margin-bottom:0; }
+  .aside code, .card-title code, .lede code, figcaption code{ font-family:"IBM Plex Mono", monospace; font-size:0.9em; background:var(--surface); border:1px solid var(--border); padding:0 4px; border-radius:4px; }
+  @media (max-width:680px){ .aside{ grid-template-columns:1fr; } .aside .tag{ white-space:normal; } }
+
+  .gotchas{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:14px; counter-reset:g; }
+  .gotchas li{ counter-increment:g; display:grid; grid-template-columns:28px 1fr; gap:4px 10px; }
+  .gotchas li::before{ content:counter(g, decimal-leading-zero); font-family:"IBM Plex Mono", monospace; font-size:12px; color:var(--accent-ink); padding-top:2px; }
+  .gotchas b{ display:block; font-size:14.5px; color:var(--ink); margin-bottom:3px; }
+  .gotchas span{ font-size:14px; line-height:1.55; color:var(--ink-muted); }
+
+  footer{ margin-top:56px; padding-top:20px; border-top:1px solid var(--border-strong); font-family:"IBM Plex Mono", monospace; font-size:11.5px; color:var(--ink-faint); line-height:1.7; }
+  footer a{ color:var(--ink-faint); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="masthead">
+    <div class="eyebrow">Personal project &middot; Data security</div>
+    <h1>What the VGS proxy actually does to your traffic</h1>
+    <p class="dek">Very Good Security sits in the network path in front of your servers. Card numbers get swapped for aliases on the way in and swapped back on the way out, so your own systems never hold the real values. Type a card below, send it through, and watch what each hop sees.</p>
+    <div class="meta-row">
+      <span><b>Inbound</b> reverse proxy &middot; REDACT</span>
+      <span><b>Outbound</b> forward proxy &middot; REVEAL</span>
+      <span><b>Runs</b> 100% in your browser</span>
+    </div>
+    <div class="note">
+      <b>This is a simulation.</b> Nothing you type leaves this page: no VGS vault and no network calls. Aliases are made locally to look like real VGS alias formats, and the route config below has the same shape as a VGS route export. Use test card numbers only. For the real thing, see the
+      <a href="https://www.verygoodsecurity.com/docs/" target="_blank" rel="noopener">VGS docs</a>.
+    </div>
+  </header>
+
+  <section aria-labelledby="try-h">
+    <div class="section-head">
+      <h2 id="try-h">Run a checkout through it</h2>
+      <span class="section-note">POST /checkout &rarr; POST /charges</span>
+    </div>
+    <p class="lede">On the left is a checkout form from your website. On the right are the inbound route's <i>filters</i>: the fields VGS will replace with aliases before the request reaches your API.</p>
+
+    <div class="grid">
+      <div class="card">
+        <span class="card-label">Your checkout form</span>
+        <div class="form-grid">
+          <div class="field"><label for="f-name">Cardholder name</label><input id="f-name" value="Ada Lovelace" autocomplete="off"></div>
+          <div class="field"><label for="f-email">Email</label><input id="f-email" value="ada@example.com" autocomplete="off"></div>
+          <div class="field full"><label for="f-number">Card number</label><input id="f-number" value="4111 1111 1111 1111" inputmode="numeric" autocomplete="off"></div>
+          <div class="field"><label for="f-exp">Expiry</label><input id="f-exp" value="12/28" autocomplete="off"></div>
+          <div class="field"><label for="f-cvc">CVC</label><input id="f-cvc" value="123" inputmode="numeric" autocomplete="off"></div>
+          <div class="full testcards" aria-label="Fill a test card">
+            <button type="button" data-card="4111 1111 1111 1111" data-cvc="123">Visa test</button>
+            <button type="button" data-card="5555 5555 5555 4444" data-cvc="321">Mastercard test</button>
+            <button type="button" data-card="3782 822463 10005" data-cvc="4321">Amex test</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <span class="card-label">Inbound route &middot; REDACT filters</span>
+        <ul class="filters" id="filters"></ul>
+        <div class="fmt-row">
+          <span class="toggle-label">Card number alias format</span>
+          <div class="flow-toggle" id="fmtToggle" role="group" aria-label="Card number alias format"></div>
+          <span class="fmt-hint" id="fmtHint"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="flow-toggle" id="modeToggle" role="group" aria-label="Route traffic">
+        <span class="toggle-label">Traffic</span>
+        <button type="button" class="flow-btn active" data-mode="vgs" aria-pressed="true">Through VGS</button>
+        <button type="button" class="flow-btn" data-mode="direct" aria-pressed="false">Direct, no VGS</button>
+      </div>
+      <div class="flow-toggle" id="ctypeToggle" role="group" aria-label="Request content type">
+        <span class="toggle-label">Form posts as</span>
+        <button type="button" class="flow-btn active" data-ctype="json" aria-pressed="true">application/json</button>
+        <button type="button" class="flow-btn" data-ctype="form" aria-pressed="false">x-www-form-urlencoded</button>
+      </div>
+    </div>
+
+    <div class="run-row">
+      <button type="button" class="run-btn" id="btnIn"><span class="n">01</span> Submit checkout</button>
+      <button type="button" class="run-btn secondary" id="btnOut" disabled><span class="n">02</span> Charge the card</button>
+    </div>
+
+    <figure class="diagram">
+      <svg viewBox="0 0 860 250" role="img" aria-label="The browser sends to the VGS inbound proxy, which forwards to your backend. Your backend stores data in its database and logs, then sends a charge through the VGS outbound proxy to the payment processor. Both VGS proxies share one vault that maps aliases to real values.">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+
+        <!-- your infrastructure zone -->
+        <rect id="zone" class="zone" x="354" y="70" width="140" height="170" rx="10"/>
+        <text id="zoneLabel" class="zone-label" x="424" y="232" text-anchor="middle">YOUR INFRA</text>
+
+        <!-- vault -->
+        <g id="n-vault" class="node vgs">
+          <rect x="178" y="10" width="492" height="34" rx="8" stroke="currentColor" stroke-width="1.3"/>
+          <text x="424" y="31" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11.5" fill="currentColor">VGS vault &middot; alias &harr; real value</text>
+        </g>
+        <line id="v-in" x1="242" y1="44" x2="242" y2="80" stroke="currentColor" stroke-opacity="0.45" stroke-width="1.2" stroke-dasharray="3 4"/>
+        <line id="v-out" x1="606" y1="44" x2="606" y2="80" stroke="currentColor" stroke-opacity="0.45" stroke-width="1.2" stroke-dasharray="3 4"/>
+
+        <line x1="20" y1="106" x2="840" y2="106" stroke="currentColor" stroke-opacity="0.12" stroke-width="1"/>
+
+        <g id="n-browser" class="node">
+          <rect x="16" y="80" width="104" height="52" rx="8" stroke="currentColor" stroke-width="1.3"/>
+          <text x="68" y="102" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11.5" fill="currentColor">Browser</text>
+          <text x="68" y="118" text-anchor="middle" font-size="10" fill="currentColor" fill-opacity="0.55">checkout form</text>
+        </g>
+        <line x1="120" y1="106" x2="176" y2="106" stroke="currentColor" stroke-width="1.3" marker-end="url(#arrow)"/>
+        <text id="a1" x="148" y="96" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10">raw</text>
+
+        <g id="n-vin" class="node vgs">
+          <rect x="178" y="80" width="128" height="52" rx="8" stroke="currentColor" stroke-width="1.3"/>
+          <text x="242" y="102" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11.5" fill="currentColor">VGS inbound</text>
+          <text id="n-vin-sub" x="242" y="118" text-anchor="middle" font-size="10" fill="currentColor" fill-opacity="0.55">reverse proxy &middot; redact</text>
+        </g>
+        <line x1="306" y1="106" x2="364" y2="106" stroke="currentColor" stroke-width="1.3" marker-end="url(#arrow)"/>
+        <text id="a2" x="335" y="96" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10">alias</text>
+
+        <g id="n-backend" class="node">
+          <rect x="366" y="80" width="116" height="52" rx="8" stroke="currentColor" stroke-width="1.3"/>
+          <text x="424" y="102" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11.5" fill="currentColor">Your backend</text>
+          <text x="424" y="118" text-anchor="middle" font-size="10" fill="currentColor" fill-opacity="0.55">api.your-shop</text>
+        </g>
+        <line x1="424" y1="132" x2="424" y2="160" stroke="currentColor" stroke-width="1.3" marker-end="url(#arrow)"/>
+        <g id="n-db" class="node">
+          <rect x="366" y="162" width="116" height="44" rx="8" stroke="currentColor" stroke-width="1.3"/>
+          <text x="424" y="182" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="currentColor">DB + logs</text>
+          <text x="424" y="197" text-anchor="middle" font-size="10" fill="currentColor" fill-opacity="0.55">what you keep</text>
+        </g>
+
+        <line x1="482" y1="106" x2="540" y2="106" stroke="currentColor" stroke-width="1.3" marker-end="url(#arrow)"/>
+        <text id="a3" x="511" y="96" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10">alias</text>
+
+        <g id="n-vout" class="node vgs">
+          <rect x="542" y="80" width="128" height="52" rx="8" stroke="currentColor" stroke-width="1.3"/>
+          <text x="606" y="102" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11.5" fill="currentColor">VGS outbound</text>
+          <text id="n-vout-sub" x="606" y="118" text-anchor="middle" font-size="10" fill="currentColor" fill-opacity="0.55">forward proxy &middot; reveal</text>
+        </g>
+        <line x1="670" y1="106" x2="726" y2="106" stroke="currentColor" stroke-width="1.3" marker-end="url(#arrow)"/>
+        <text id="a4" x="698" y="96" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10">raw</text>
+
+        <g id="n-proc" class="node">
+          <rect x="728" y="80" width="116" height="52" rx="8" stroke="currentColor" stroke-width="1.3"/>
+          <text x="786" y="102" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11.5" fill="currentColor">Processor</text>
+          <text x="786" y="118" text-anchor="middle" font-size="10" fill="currentColor" fill-opacity="0.55">Stripe, Adyen&hellip;</text>
+        </g>
+
+        <circle id="pulse" class="pulse" cx="68" cy="106" r="5.5"/>
+      </svg>
+      <div class="legend">
+        <span><i style="background:var(--err)"></i>raw sensitive value</span>
+        <span><i style="background:var(--accent)"></i>VGS alias</span>
+        <span><i style="border:1px dashed var(--ink-faint)"></i>your infrastructure, where compliance scope lives</span>
+      </div>
+      <figcaption id="figcap">VGS shows up twice, once on each side of your backend. Both proxies use the same vault, so an alias made on the way in can be turned back into the real value on the way out, and your backend only ever passes the alias along.</figcaption>
+      <div class="flow-result" id="flowResult" aria-live="polite"></div>
+    </figure>
+  </section>
+
+  <section aria-labelledby="hops-h">
+    <div class="section-head">
+      <h2 id="hops-h">What every hop actually saw</h2>
+      <span class="section-note" id="hopsNote">run step 01 to fill these in</span>
+    </div>
+    <div class="grid" id="hops"></div>
+
+    <div class="aside" id="breach" hidden>
+      <span class="tag" id="breachTag">If your DB leaked</span>
+      <div id="breachBody"></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="cfg-h">
+    <div class="section-head">
+      <h2 id="cfg-h">The config behind it</h2>
+      <span class="section-note">updates as you change the filters</span>
+    </div>
+    <p class="lede">A VGS route is a host match plus a list of <i>filters</i>. Each filter has conditions (path, content type), a field selector (here JSONPath), and an operation: <code>REDACT</code> on the way in, <code>REVEAL</code> on the way out.</p>
+    <div class="grid">
+      <div class="card">
+        <div class="card-head"><span class="card-label">routes.yaml &middot; illustrative</span></div>
+        <div class="card-title">Same shape as a VGS route export, trimmed down. IDs and some fields are left out.</div>
+        <div class="pre-wrap"><pre class="console" id="yaml"></pre></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-label">What changes in your code</span></div>
+        <div class="card-title"><b>Inbound:</b> the form posts to your vault's URL instead of your API. Test with curl or Postman first, then switch the real form to <b>VGS Collect</b> (hosted fields, so your page's JS never touches the card either). <b>Outbound:</b> your backend sends the charge through VGS as an HTTPS proxy and trusts VGS's CA certificate.</div>
+        <div class="pre-wrap"><pre class="console" id="codeIn"></pre></div>
+        <div class="pre-wrap"><pre class="console" id="codeOut"></pre></div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="g-h">
+    <div class="section-head">
+      <h2 id="g-h">Things that trip people up</h2>
+      <span class="section-note">most of these can be reproduced above</span>
+    </div>
+    <div class="aside" style="grid-template-columns:1fr;">
+      <ul class="gotchas">
+        <li><div><b>Filters match by condition, not by magic.</b><span>Switch the form to <code>x-www-form-urlencoded</code> and submit again. The route expects <code>application/json</code>, so it doesn't match and the request goes through untouched. The real card reaches your backend, and nothing errors to tell you.</span></div></li>
+        <li><div><b>The outbound proxy terminates TLS on purpose.</b><span>To rewrite an encrypted request body, VGS has to decrypt it. That's why your HTTP client is given VGS's CA cert (<code>verify="sandbox.pem"</code>). Without it, you get certificate errors on every outbound call.</span></div></li>
+        <li><div><b>CVC goes in volatile storage.</b><span>PCI DSS doesn't let you keep the CVC after it's used. VGS's walkthrough sets the CVC filter to volatile storage, which is only good for about an hour. Charge with it right away, and remember to add a matching REVEAL filter for it on the outbound route.</span></div></li>
+        <li><div><b>Turn on payload logging while you test.</b><span>In the dashboard, open Logs and record payloads. Each request then shows which filters fired, and you can see the redacted body inbound and the revealed body outbound. That's the fastest way to catch the Content-Type mismatch in #01.</span></div></li>
+        <li><div><b>The alias format is a product decision.</b><span>A format-preserving alias (keeps the first 6 and last 4, passes the Luhn check) gets through your existing card validation and still shows "Visa &bull;&bull;&bull;&bull; 1111" correctly. A random <code>tok_</code> alias is obviously not a card, so nothing can mistake it for one.</span></div></li>
+        <li><div><b>Aliasing a field you later need breaks things.</b><span>Redact the cardholder name and your backend can no longer personalize the receipt email. It only has the alias. Redact what you never need to read yourself.</span></div></li>
+        <li><div><b>It reduces scope. It doesn't remove it.</b><span>Your servers stop storing and handling card data, which shrinks your PCI footprint by a lot. But the page that collects the card, your VGS credentials, and your route config still matter. VGS Collect covers the collecting page.</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <section aria-labelledby="real-h">
+    <div class="section-head">
+      <h2 id="real-h">Setting it up for real</h2>
+      <span class="section-note">following VGS's own walkthrough</span>
+    </div>
+    <p class="lede">These steps follow <a href="https://www.youtube.com/watch?v=2Aex2VpcvCE" target="_blank" rel="noopener" style="color:var(--accent-ink)">VGS HTTP Proxy (a quick walk through)</a> from the VGS integration team. Its advice: set up the routes first, and leave the form until last.</p>
+    <div class="aside" style="grid-template-columns:1fr;">
+      <ul class="gotchas">
+        <li><div><b>Inbound route: Routes → Inbound → Add.</b><span>Upstream is your server with the database. That's where the aliases get stored. Set the path and content type, then add a REDACT filter on the card number with <i>persistent</i> storage (19-digit fixed length is common) and one on the CVC with <i>volatile</i> storage.</span></div></li>
+        <li><div><b>Outbound route: Routes → Outbound → Add.</b><span>Upstream is the third party, such as Stripe, WorldPay or Adyen. Set the path you're calling (<code>/payments</code>, <code>/customers</code>, whatever it is), then add REVEAL filters for the same fields: one for the persistent card number, one for the volatile CVC.</span></div></li>
+        <li><div><b>Logs → record payloads.</b><span>Now every request shows which filters succeeded and the body before and after.</span></div></li>
+        <li><div><b>Test with curl or Postman.</b><span>The dashboard gives you code snippets. Send a card to the vault URL and check that your server receives aliases. Then send the charge through the forward proxy and check in Logs that the third party got the real values.</span></div></li>
+        <li><div><b>Then build the real form with VGS Collect.</b><span>Start from the examples on GitHub (vgs-collect examples). Do the reveal call on your server in Python, Java, Node, or whatever you use.</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Interactive simulation, no real VGS calls, no data leaves your browser &middot; aliases generated locally in VGS-style formats &middot; concepts per the <a href="https://www.verygoodsecurity.com/docs/" target="_blank" rel="noopener">VGS documentation</a> &middot; source: <a href="https://github.com/deuber/vgs-proxy-demo" target="_blank" rel="noopener">github.com/deuber/vgs-proxy-demo</a> &middot; not affiliated with Very Good Security
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+var FIELDS = [
+  { key: "name",   label: "Cardholder name", path: "$.name",        sensitive: false },
+  { key: "email",  label: "Email",           path: "$.email",       sensitive: false },
+  { key: "number", label: "Card number",     path: "$.card.number", sensitive: true },
+  { key: "exp",    label: "Expiry",          path: "$.card.exp",    sensitive: false },
+  { key: "cvc",    label: "CVC",             path: "$.card.cvc",    sensitive: true }
+];
+
+var FORMATS = {
+  FIXED_19:              { label: "19-digit fixed", hint: "Always 19 digits, whatever the card length. In VGS's own walkthrough, this is the format they see most for card numbers." },
+  FPE_SIX_T_FOUR:        { label: "FPE_SIX_T_FOUR", hint: "Keeps the first 6 and last 4 digits and passes the Luhn check. Existing validation and \"•••• 1111\" displays keep working." },
+  FPE_T_FOUR:            { label: "FPE_T_FOUR", hint: "Keeps the last 4 digits and passes the Luhn check. Hides the BIN (the first 6 digits that identify the issuer)." },
+  NUM_LENGTH_PRESERVING: { label: "NUM_LENGTH_PRESERVING", hint: "Random digits, same length as the original. Fits numeric DB columns." },
+  UUID:                  { label: "UUID", hint: "An opaque tok_… string. Obviously not a card number." }
+};
+function genFor(key){ return key === "number" ? state.fmt : key === "cvc" ? "NUM_LENGTH_PRESERVING" : "UUID"; }
+
+var VAULT_HOST = "tntq4demo00.sandbox.verygoodproxy.com";
+var API_HOST = "api.your-shop.example";
+var PROC_HOST = "api.processor.example";
+
+var state = {
+  mode: "vgs", ctype: "json", fmt: "FIXED_19",
+  redact: { name: false, email: false, number: true, exp: false, cvc: true },
+  step: 0, vault: {}, raw: {}, r: {}
+};
+
+function $(id){ return document.getElementById(id); }
+function esc(s){
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+  });
+}
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+
+// ---- deterministic local alias generation (same input -> same alias, for stable demos) ----
+function fnv1a(str){
+  var h = 0x811c9dc5;
+  for (var i = 0; i < str.length; i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return h >>> 0;
+}
+function rng(seed){
+  return function(){
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function luhnOk(d){
+  var sum = 0, alt = false;
+  for (var i = d.length - 1; i >= 0; i--){
+    var n = d.charCodeAt(i) - 48;
+    if (alt){ n *= 2; if (n > 9) n -= 9; }
+    sum += n; alt = !alt;
+  }
+  return sum % 10 === 0;
+}
+function fixLuhn(arr, pos){
+  for (var d = 0; d < 10; d++){ arr[pos] = String(d); if (luhnOk(arr.join(""))) return arr.join(""); }
+  return arr.join("");
+}
+var B62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+function makeAlias(value, format){
+  for (var attempt = 0; attempt < 5; attempt++){
+    var r = rng(fnv1a(format + ":" + value + ":" + attempt));
+    var out;
+    if (format === "UUID"){
+      out = "tok_sandbox_";
+      for (var i = 0; i < 22; i++) out += B62[Math.floor(r() * 62)];
+    } else if (format === "FIXED_19"){
+      out = String(1 + Math.floor(r() * 9));
+      for (var q = 1; q < 19; q++) out += String(Math.floor(r() * 10));
+    } else {
+      var len = value.length, arr = [];
+      for (var j = 0; j < len; j++) arr.push(String(Math.floor(r() * 10)));
+      if (format === "FPE_SIX_T_FOUR"){
+        for (var a = 0; a < 6; a++) arr[a] = value[a];
+        for (var b = len - 4; b < len; b++) arr[b] = value[b];
+        out = fixLuhn(arr, len - 5);
+      } else if (format === "FPE_T_FOUR"){
+        if (arr[0] === "0") arr[0] = "9";
+        for (var c = len - 4; c < len; c++) arr[c] = value[c];
+        out = fixLuhn(arr, len - 5);
+      } else {
+        if (arr[0] === "0") arr[0] = "8";
+        out = arr.join("");
+      }
+    }
+    if (out !== value) return out;
+  }
+  return out;
+}
+
+// ---- rendering helpers: color every string leaf by whether it's raw or an alias ----
+function classify(s){
+  if (state.vault[s]) return "alias";
+  if (state.raw[s]) return "raw";
+  return "";
+}
+function strHTML(s){
+  var cls = classify(s);
+  var body = '"' + esc(s) + '"';
+  return cls ? '<span class="' + cls + '">' + body + "</span>" : body;
+}
+function jsonHTML(v, ind, compact){
+  ind = ind || "";
+  if (typeof v === "string") return strHTML(v);
+  if (typeof v === "number") return '<span class="num">' + v + "</span>";
+  if (v === null) return '<span class="num">null</span>';
+  var keys = Object.keys(v);
+  var inner = ind + "  ";
+  if (compact){
+    return "{" + keys.map(function(k){ return '<span class="k">"' + esc(k) + '"</span>:' + jsonHTML(v[k], "", true); }).join(",") + "}";
+  }
+  return "{\n" + keys.map(function(k){
+    return inner + '<span class="k">"' + esc(k) + '"</span>: ' + jsonHTML(v[k], inner, false);
+  }).join(",\n") + "\n" + ind + "}";
+}
+function formEncode(body){
+  return [
+    ["name", body.name], ["email", body.email],
+    ["card[number]", body.card.number], ["card[exp]", body.card.exp], ["card[cvc]", body.card.cvc]
+  ].map(function(p){ return [p[0], p[1]]; });
+}
+function formHTML(pairs){
+  return pairs.map(function(p){
+    var enc = encodeURIComponent(p[1]).replace(/%20/g, "+");
+    var cls = classify(p[1]);
+    var val = cls ? '<span class="' + cls + '">' + esc(enc) + "</span>" : esc(enc);
+    return '<span class="k">' + esc(encodeURIComponent(p[0])) + "</span>=" + val;
+  }).join("&amp;");
+}
+function countRaw(obj){
+  var n = 0;
+  (function walk(v){
+    if (typeof v === "string"){ if (classify(v) === "raw" && state.rawSensitive[v]) n++; }
+    else if (v && typeof v === "object") Object.keys(v).forEach(function(k){ walk(v[k]); });
+  })(obj);
+  return n;
+}
+function countAlias(obj){
+  var n = 0;
+  (function walk(v){
+    if (typeof v === "string"){ if (state.vault[v]) n++; }
+    else if (v && typeof v === "object") Object.keys(v).forEach(function(k){ walk(v[k]); });
+  })(obj);
+  return n;
+}
+
+function attachCopy(root){
+  root.querySelectorAll(".pre-wrap").forEach(function(wrap){
+    if (wrap.querySelector(".copy-btn")) return;
+    var pre = wrap.querySelector("pre");
+    var btn = document.createElement("button");
+    btn.type = "button"; btn.className = "copy-btn"; btn.textContent = "copy";
+    btn.addEventListener("click", function(){
+      if (!navigator.clipboard) return;
+      navigator.clipboard.writeText(pre.textContent).then(function(){
+        btn.textContent = "copied"; setTimeout(function(){ btn.textContent = "copy"; }, 1200);
+      }).catch(function(){ btn.textContent = "failed"; });
+    });
+    wrap.appendChild(btn);
+  });
+}
+
+// ---- form + filters ----
+function readForm(){
+  return {
+    name: $("f-name").value.trim(),
+    email: $("f-email").value.trim(),
+    number: $("f-number").value.replace(/\D/g, ""),
+    exp: $("f-exp").value.trim(),
+    cvc: $("f-cvc").value.replace(/\D/g, "")
+  };
+}
+
+function renderFilters(){
+  $("filters").innerHTML = FIELDS.map(function(f){
+    return '<li><label><input type="checkbox" data-field="' + f.key + '"' + (state.redact[f.key] ? " checked" : "") + '>' +
+      '<span class="fname">' + esc(f.label) + (f.key === "cvc" ? ' <span class="fpath">· volatile</span>' : "") + '</span>' +
+      '<span class="fpath">' + esc(f.path) + "</span></label></li>";
+  }).join("");
+  $("filters").querySelectorAll("input").forEach(function(cb){
+    cb.addEventListener("change", function(){ state.redact[cb.dataset.field] = cb.checked; reset(); });
+  });
+  $("fmtToggle").innerHTML = Object.keys(FORMATS).map(function(k){
+    return '<button type="button" class="flow-btn' + (k === state.fmt ? " active" : "") + '" data-fmt="' + k + '" aria-pressed="' + (k === state.fmt) + '">' + FORMATS[k].label + "</button>";
+  }).join("");
+  $("fmtHint").textContent = FORMATS[state.fmt].hint;
+  $("fmtToggle").querySelectorAll(".flow-btn").forEach(function(b){
+    b.addEventListener("click", function(){ state.fmt = b.dataset.fmt; renderFilters(); reset(); });
+  });
+}
+
+function wireToggle(id, attr, onPick){
+  var el = $(id);
+  el.querySelectorAll(".flow-btn").forEach(function(b){
+    b.addEventListener("click", function(){
+      el.querySelectorAll(".flow-btn").forEach(function(x){ x.classList.remove("active", "err"); x.setAttribute("aria-pressed", "false"); });
+      b.classList.add("active"); b.setAttribute("aria-pressed", "true");
+      onPick(b.getAttribute(attr), b);
+    });
+  });
+}
+
+// ---- the two steps ----
+function inbound(){
+  var v = readForm();
+  if (v.number.length < 12 || v.number.length > 19){
+    showResult([{ err: true, text: "That card number needs 12–19 digits. Try one of the test cards." }]);
+    return false;
+  }
+  state.vault = {}; state.raw = {}; state.rawSensitive = {};
+  FIELDS.forEach(function(f){
+    if (!v[f.key]) return;
+    if (f.sensitive || state.redact[f.key]) state.raw[v[f.key]] = true;
+    if (f.sensitive) state.rawSensitive[v[f.key]] = true;
+  });
+
+  var browser = { name: v.name, email: v.email, card: { number: v.number, exp: v.exp, cvc: v.cvc } };
+  var throughVgs = state.mode === "vgs";
+  var matched = throughVgs && state.ctype === "json";
+  var backend = clone(browser);
+  var redacted = [];
+
+  if (matched){
+    FIELDS.forEach(function(f){
+      if (!state.redact[f.key] || !v[f.key]) return;
+      var fmt = genFor(f.key);
+      var alias = makeAlias(v[f.key], fmt);
+      state.vault[alias] = { value: v[f.key], storage: f.key === "cvc" ? "VOLATILE" : "PERSISTENT", field: f.path, fmt: fmt };
+      if (f.path.indexOf("$.card.") === 0) backend.card[f.key] = alias; else backend[f.key] = alias;
+      redacted.push(f.label);
+    });
+  }
+
+  var orderId = "ord_" + fnv1a(v.number + v.email).toString(36).slice(0, 8);
+  var db = { order_id: orderId, customer_name: backend.name, email: backend.email, card_number: backend.card.number, card_exp: backend.card.exp };
+  var ts = new Date().toISOString().replace(/\.\d+Z$/, "Z");
+
+  state.r = { v: v, browser: browser, backend: backend, db: db, ts: ts, orderId: orderId,
+              throughVgs: throughVgs, matched: matched, redacted: redacted, out: null, proc: null };
+  state.step = 1;
+  return true;
+}
+
+function outbound(){
+  var b = state.r.backend;
+  var out = { amount: 4200, currency: "usd", card: { number: b.card.number, exp: b.card.exp, cvc: b.card.cvc }, metadata: { order_id: state.r.orderId } };
+  var proc = clone(out);
+  var revealed = 0;
+  if (state.r.throughVgs){
+    ["number", "exp", "cvc"].forEach(function(k){
+      var hit = state.vault[proc.card[k]];
+      if (hit){ proc.card[k] = hit.value; revealed++; }
+    });
+  }
+  state.r.out = out; state.r.proc = proc; state.r.revealed = revealed;
+  state.step = 2;
+}
+
+// ---- diagram ----
+function setLbl(id, raw){
+  var t = $(id);
+  t.textContent = raw ? "raw" : "alias";
+  t.setAttribute("class", raw ? "lbl-raw" : "lbl-alias");
+}
+function paintDiagram(){
+  var vgs = state.mode === "vgs";
+  ["n-vin", "n-vout", "n-vault"].forEach(function(id){ $(id).classList.toggle("node-miss", !vgs); });
+  ["v-in", "v-out"].forEach(function(id){ $(id).style.opacity = vgs ? "" : "0.2"; });
+  $("n-vin-sub").textContent = vgs ? "reverse proxy · redact" : "bypassed";
+  $("n-vout-sub").textContent = vgs ? "forward proxy · reveal" : "bypassed";
+
+  var r = state.r, step = state.step;
+  var backendRaw = step >= 1 ? countRaw(r.backend) > 0 : !vgs || state.ctype !== "json" || !(state.redact.number && state.redact.cvc);
+  var outRaw = step >= 2 ? countRaw(r.out) > 0 : backendRaw;
+  setLbl("a1", true);
+  setLbl("a2", backendRaw);
+  setLbl("a3", outRaw);
+  setLbl("a4", true);
+
+  var zone = $("zone"), zl = $("zoneLabel");
+  zone.setAttribute("class", "zone" + (step >= 1 ? (backendRaw ? " raw" : " clean") : ""));
+  zl.setAttribute("class", "zone-label" + (step >= 1 ? (backendRaw ? " raw" : " clean") : ""));
+  zl.textContent = step >= 1 ? (backendRaw ? "RAW CARD DATA HERE" : "ALIASES ONLY") : "YOUR INFRA";
+
+  var hit = { "n-browser": step >= 1, "n-vin": step >= 1 && vgs, "n-backend": step >= 1, "n-db": step >= 1, "n-vout": step >= 2 && vgs, "n-proc": step >= 2 };
+  Object.keys(hit).forEach(function(id){
+    var g = $(id);
+    g.classList.toggle("node-hit", hit[id]);
+    g.classList.toggle("raw", hit[id] && (id === "n-backend" || id === "n-db") && backendRaw);
+  });
+}
+
+var animTimer = null;
+function animate(stops, done){
+  var pulse = $("pulse");
+  clearTimeout(animTimer);
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches){
+    pulse.style.opacity = "0"; done(); return;
+  }
+  pulse.setAttribute("cx", stops[0].x);
+  pulse.classList.toggle("raw", stops[0].raw);
+  pulse.style.opacity = "1";
+  void pulse.getBoundingClientRect();
+  var i = 1;
+  (function next(){
+    if (i >= stops.length){ animTimer = setTimeout(function(){ pulse.style.opacity = "0"; done(); }, 250); return; }
+    var s = stops[i++];
+    requestAnimationFrame(function(){ pulse.setAttribute("cx", s.x); pulse.classList.toggle("raw", s.raw); });
+    animTimer = setTimeout(next, 520);
+  })();
+}
+
+// ---- output ----
+function showResult(chips){
+  $("flowResult").innerHTML = chips.map(function(c){
+    return '<div class="chip' + (c.err ? " err" : "") + '"><span class="dot"></span><span>' + c.text + "</span></div>";
+  }).join("");
+}
+
+function hopCard(label, labelCls, title, html, tally, tallyRaw, wrap){
+  return '<div class="card"><div class="card-head"><span class="card-label ' + (labelCls || "") + '">' + label + '</span>' +
+    (tally ? '<span class="tally' + (tallyRaw ? " raw" : "") + '">' + tally + "</span>" : "") + "</div>" +
+    '<div class="card-title">' + title + "</div>" +
+    '<pre class="console' + (wrap ? " wrap" : "") + '">' + html + "</pre></div>";
+}
+function emptyCard(label, msg){
+  return '<div class="card"><div class="card-head"><span class="card-label muted">' + label + '</span></div><div class="empty">' + msg + "</div></div>";
+}
+function tallyFor(obj){
+  var raw = countRaw(obj), al = countAlias(obj);
+  var parts = [];
+  if (raw) parts.push(raw + " raw card value" + (raw > 1 ? "s" : ""));
+  if (al) parts.push(al + " alias" + (al > 1 ? "es" : ""));
+  return { text: parts.join(" · ") || "no card data", raw: raw > 0 };
+}
+
+function renderHops(){
+  var r = state.r, step = state.step, cards = [];
+  var vgs = r.throughVgs;
+  if (step < 1){
+    cards.push(emptyCard("Browser → sent", "Press <b>01 Submit checkout</b>."));
+    cards.push(emptyCard("Your backend ← received", "Waiting for step 01."));
+    cards.push(emptyCard("Your database & logs", "Waiting for step 01."));
+    cards.push(emptyCard("VGS vault", "Waiting for step 01."));
+    cards.push(emptyCard("Your backend → sent", "Waiting for step 02."));
+    cards.push(emptyCard("Processor ← received", "Waiting for step 02."));
+    $("hops").innerHTML = cards.join("");
+    $("hopsNote").textContent = "run step 01 to fill these in";
+    $("breach").hidden = true;
+    return;
+  }
+
+  var ct = state.ctype === "json" ? "application/json" : "application/x-www-form-urlencoded";
+  var host = vgs ? VAULT_HOST : API_HOST;
+  var reqLine = '<span class="req">POST /checkout</span>\n<span class="k">Host:</span> ' + host + '\n<span class="k">Content-Type:</span> ' + ct + "\n\n";
+  var bodyOf = function(o){ return state.ctype === "json" ? jsonHTML(o) : formHTML(formEncode(o)); };
+
+  var t1 = tallyFor(r.browser);
+  cards.push(hopCard("Browser → sent", "", vgs ? "The form posts to your <b>vault's URL</b>, not to your API." : "The form posts straight to your API.",
+    reqLine + bodyOf(r.browser), t1.text, t1.raw, state.ctype !== "json"));
+
+  var t2 = tallyFor(r.backend);
+  var t2title = !vgs ? "Exactly what the browser sent." :
+    r.matched ? "VGS matched the route, swapped " + (r.redacted.length ? r.redacted.join(", ") : "nothing (no filters checked)") + " for aliases, and forwarded to " + API_HOST + "." :
+    "<b>No route matched</b> (the filter needs <code>application/json</code>), so VGS forwarded the request unchanged.";
+  cards.push(hopCard("Your backend ← received", t2.raw ? "err" : "", t2title,
+    '<span class="req">POST /checkout</span>\n<span class="k">Host:</span> ' + API_HOST + "\n\n" + bodyOf(r.backend), t2.text, t2.raw, state.ctype !== "json"));
+
+  var logBody = state.ctype === "json" ? jsonHTML(r.backend, "", true) : formHTML(formEncode(r.backend));
+  var t3db = countRaw(r.db), t3log = countRaw(r.backend);
+  cards.push(hopCard("Your database & logs", (t3db + t3log) ? "err" : "",
+    "One row in <code>orders</code>, plus the request log line that frameworks write by default. The log has the CVC too.",
+    '<span class="dim">-- orders</span>\n' + jsonHTML(r.db) + '\n\n<span class="dim"># app.log</span>\n<span class="dim">' + r.ts + " INFO POST /checkout body=</span>" + logBody,
+    (t3db + t3log) ? (t3db + t3log) + " raw card values at rest" : "no raw card data at rest", (t3db + t3log) > 0, true));
+
+  var vkeys = Object.keys(state.vault);
+  if (!vgs){
+    cards.push(emptyCard("VGS vault", "Not used. Traffic went straight to your servers."));
+  } else if (!vkeys.length){
+    cards.push(emptyCard("VGS vault", r.matched ? "Empty. No filters were checked, so nothing was redacted." : "Empty. The route didn't match, so nothing was redacted."));
+  } else {
+    cards.push('<div class="card"><div class="card-head"><span class="card-label">VGS vault</span><span class="tally">' + vkeys.length + " entr" + (vkeys.length > 1 ? "ies" : "y") + "</span></div>" +
+      '<div class="card-title">The only place real values and aliases sit side by side. It\'s VGS\'s infrastructure, not yours.</div>' +
+      '<table class="vault"><thead><tr><th>Alias</th><th>Real value</th></tr></thead><tbody>' +
+      vkeys.map(function(a){
+        var e = state.vault[a];
+        return '<tr><td class="a">' + esc(a) + '<div class="st">' + esc(e.field) + " · " + (FORMATS[e.fmt] ? FORMATS[e.fmt].label : e.fmt) + '</div></td><td class="v">' + esc(e.value) + '<div class="st">' + e.storage + (e.storage === "VOLATILE" ? " · ~1 hour" : "") + "</div></td></tr>";
+      }).join("") + "</tbody></table></div>");
+  }
+
+  if (step < 2){
+    cards.push(emptyCard("Your backend → sent", "Press <b>02 Charge the card</b>."));
+    cards.push(emptyCard("Processor ← received", "Waiting for step 02."));
+  } else {
+    var t5 = tallyFor(r.out);
+    var proxyLine = vgs ? '<span class="k">via HTTPS_PROXY</span> ' + VAULT_HOST + ":8443\n" : "";
+    cards.push(hopCard("Your backend → sent", t5.raw ? "err" : "",
+      vgs ? "Your code builds the charge with whatever it has stored, then sends it through the VGS forward proxy." : "Your code sends the stored card straight to the processor.",
+      '<span class="req">POST /charges</span>\n<span class="k">Host:</span> ' + PROC_HOST + "\n" + proxyLine + "\n" + jsonHTML(r.out), t5.text, t5.raw));
+    var t6 = tallyFor(r.proc);
+    var aliasesLeft = countAlias(r.proc);
+    cards.push(hopCard("Processor ← received", aliasesLeft ? "err" : "",
+      vgs ? (r.revealed ? "The outbound route found " + r.revealed + " alias" + (r.revealed > 1 ? "es" : "") + ", looked them up in the vault, and put the real values back in. The processor gets a real card it can charge." : "There were no aliases to reveal, because your backend already had the real card.") +
+        (aliasesLeft ? " <b>An alias wasn't revealed</b>, so the processor would reject it." : "")
+        : "The real card. The processor can charge it, and so could anyone who saw your DB.",
+      '<span class="req">POST /charges</span>\n<span class="k">Host:</span> ' + PROC_HOST + "\n\n" + jsonHTML(r.proc), t6.text, false));
+  }
+
+  $("hops").innerHTML = cards.join("");
+  $("hopsNote").textContent = (vgs ? "through VGS" : "direct") + " · " + ct;
+
+  // breach drill
+  var leaked = countRaw(r.db) + countRaw(r.backend);
+  $("breach").hidden = false;
+  $("breachTag").className = "tag" + (leaked ? " err" : "");
+  $("breachTag").textContent = leaked ? "If your DB leaked" : "If your DB leaked";
+  var sample = r.db.card_number;
+  $("breachBody").innerHTML = leaked
+    ? "<p>An attacker who dumps <code>orders</code> and <code>app.log</code> gets <b>live card numbers</b> (<code>" + esc(sample) + "</code>), and the log has the CVC too. " +
+      (vgs ? "You're paying for VGS here, but the route never matched, so you get the same result as having no VGS at all." : "Every system that touched this is in PCI scope: the web servers, the DB, the log pipeline, and backups.") + "</p>"
+    : "<p>An attacker who dumps <code>orders</code> and <code>app.log</code> gets <code>" + esc(sample) + "</code>. It's an alias. It means nothing outside your VGS vault. Turning it back into a card takes your vault's outbound route and proxy credentials, and even then it only gets revealed on the way to the destination you configured.</p>" +
+      (state.fmt.indexOf("FPE") === 0 ? "<p>Format-preserving aliases still show the last 4 digits" + (state.fmt === "FPE_SIX_T_FOUR" ? " and the BIN" : "") + ". That's usually fine to display, but the alias isn't a secret either.</p>" : "");
+}
+
+function renderConfig(){
+  var sel = FIELDS.filter(function(f){ return state.redact[f.key]; });
+  var entry = function(op, f, gen, path, extra){
+    return "    - phase: REQUEST\n" +
+      "      operation: " + op + "\n" +
+      "      transformer: JSON_PATH\n" +
+      "      transformer_config:\n        - '" + path + "'\n" +
+      (gen ? "      public_token_generator: " + (gen === "FIXED_19" ? "<19-digit fixed length>   # pick it in the dashboard" : gen) + "\n" : "") +
+      (op === "REDACT" ? "      token_manager: " + (f.key === "cvc" ? "VOLATILE" : "PERSISTENT") + "\n" : "") +
+      "      targets: [body]\n" +
+      "      config:\n        condition: AND\n        rules:\n" +
+      "          - expression: { field: PathInfo, operator: equals, type: string, values: ['" + extra.path + "'] }\n" +
+      "          - expression: { field: ContentType, operator: equals, type: string, values: ['application/json'] }\n";
+  };
+  var y = "version: 1\ndata:\n";
+  y += "# inbound: browser -> VGS -> your API\n";
+  y += "- attributes:\n    tags: { name: inbound-checkout }\n    protocol: http\n    source_endpoint: '*'\n" +
+       "    host_endpoint: (.*)\\.sandbox\\.verygoodproxy\\.com\n" +
+       "    destination_override_endpoint: 'https://" + API_HOST + "'\n    entries:\n";
+  y += sel.length ? sel.map(function(f){ return entry("REDACT", f, genFor(f.key), f.path, { path: "/checkout" }); }).join("") : "    []   # no filters checked\n";
+  var outSel = sel.filter(function(f){ return f.path.indexOf("$.card.") === 0; });
+  y += "# outbound: your API -> VGS -> processor\n";
+  y += "- attributes:\n    tags: { name: outbound-processor }\n    protocol: http\n    source_endpoint: '*'\n" +
+       "    host_endpoint: api\\.processor\\.example\n    entries:\n";
+  y += outSel.length ? outSel.map(function(f){ return entry("REVEAL", f, null, f.path, { path: "/charges" }); }).join("") : "    []   # nothing to reveal\n";
+  $("yaml").textContent = y;
+
+  var v = readForm();
+  var demoBody = JSON.stringify({ name: v.name, email: v.email, card: { number: v.number || "4111111111111111", exp: v.exp, cvc: v.cvc } });
+  $("codeIn").textContent =
+    "# inbound: point the form at the vault, not your API\n" +
+    "curl https://" + VAULT_HOST + "/checkout \\\n" +
+    "  -H 'Content-Type: application/json' \\\n" +
+    "  -d '" + demoBody + "'";
+  $("codeOut").textContent =
+    "# outbound: send the charge through the forward proxy\n" +
+    "import requests\n\n" +
+    "proxies = {\"https\": \"https://USERNAME:PASSWORD@" + VAULT_HOST + ":8443\"}\n\n" +
+    "requests.post(\"https://" + PROC_HOST + "/charges\",\n" +
+    "              json=charge,              # contains aliases\n" +
+    "              proxies=proxies,\n" +
+    "              verify=\"sandbox.pem\")     # VGS CA cert";
+  attachCopy(document);
+}
+
+// ---- orchestration ----
+function reset(){
+  clearTimeout(animTimer);
+  $("pulse").style.opacity = "0";
+  state.step = 0; state.r = {}; state.vault = {}; state.raw = {}; state.rawSensitive = {};
+  $("btnOut").disabled = true;
+  $("flowResult").innerHTML = "";
+  paintDiagram(); renderHops(); renderConfig();
+}
+
+function runInbound(){
+  reset();
+  if (!inbound()) return;
+  var r = state.r;
+  var backendRaw = countRaw(r.backend) > 0;
+  $("btnIn").disabled = true;
+  animate([{ x: 68, raw: true }, { x: 242, raw: true }, { x: 424, raw: backendRaw }], function(){
+    $("btnIn").disabled = false;
+    $("btnOut").disabled = false;
+    paintDiagram(); renderHops();
+    var chips = [];
+    if (!r.throughVgs) chips.push({ err: true, text: "Direct: the raw card went straight to " + API_HOST + ", then into the DB and logs." });
+    else if (!r.matched) chips.push({ err: true, text: "No route matched: Content-Type was x-www-form-urlencoded, but the filters need application/json. The raw card passed through." });
+    else chips.push({ err: backendRaw, text: "Inbound route matched · " + r.redacted.length + " field" + (r.redacted.length === 1 ? "" : "s") + " redacted · your backend saw " + countRaw(r.backend) + " raw card value" + (countRaw(r.backend) === 1 ? "" : "s") + "." });
+    if (r.matched && !state.redact.cvc) chips.push({ err: true, text: "The CVC filter is off, so the real CVC reached your backend and your logs." });
+    showResult(chips);
+  });
+}
+
+function runOutbound(){
+  if (state.step < 1) return;
+  outbound();
+  var r = state.r;
+  var outRaw = countRaw(r.out) > 0;
+  $("btnOut").disabled = true; $("btnIn").disabled = true;
+  animate([{ x: 424, raw: outRaw }, { x: 606, raw: outRaw }, { x: 786, raw: true }], function(){
+    $("btnIn").disabled = false;
+    paintDiagram(); renderHops();
+    var chips = [];
+    if (r.throughVgs && r.revealed) chips.push({ err: false, text: "Outbound route revealed " + r.revealed + " alias" + (r.revealed > 1 ? "es" : "") + " · the processor got the real card · your backend never held it." });
+    else if (r.throughVgs) chips.push({ err: true, text: "The charge goes through, but only because your backend already had the raw card. VGS had nothing to reveal." });
+    else chips.push({ err: true, text: "The charge goes through. So would one from anyone holding a copy of your database." });
+    var left = countAlias(r.proc);
+    if (left) chips.push({ err: true, text: left + " alias" + (left > 1 ? "es" : "") + " reached the processor unrevealed, so the charge would be declined." });
+    showResult(chips);
+  });
+}
+
+function init(){
+  renderFilters();
+  wireToggle("modeToggle", "data-mode", function(m, b){ state.mode = m; if (m === "direct") b.classList.add("err"); reset(); });
+  wireToggle("ctypeToggle", "data-ctype", function(c, b){ state.ctype = c; if (c === "form") b.classList.add("err"); reset(); });
+  document.querySelectorAll(".testcards button").forEach(function(b){
+    b.addEventListener("click", function(){ $("f-number").value = b.dataset.card; $("f-cvc").value = b.dataset.cvc; reset(); });
+  });
+  ["f-name", "f-email", "f-number", "f-exp", "f-cvc"].forEach(function(id){ $(id).addEventListener("input", reset); });
+  $("btnIn").addEventListener("click", runInbound);
+  $("btnOut").addEventListener("click", runOutbound);
+  reset();
+}
+init();
+</script>
+</body>
+</html>
