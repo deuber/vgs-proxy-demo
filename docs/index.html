@@ -99,6 +99,22 @@
     font-family:"IBM Plex Mono", monospace; font-size:13.5px; padding:9px 11px; border-radius:7px;
     border:1px solid var(--border-strong); background:var(--surface-2); color:var(--ink); width:100%;
   }
+  .label-row{ display:flex; align-items:center; gap:6px; }
+  .tip{ position:relative; display:inline-flex; }
+  .tip-btn{
+    width:15px; height:15px; border-radius:99px; border:1px solid var(--border-strong); background:var(--surface-2);
+    color:var(--ink-faint); font-family:"IBM Plex Mono", monospace; font-size:9.5px; font-weight:600; line-height:1;
+    padding:0; cursor:help; display:inline-flex; align-items:center; justify-content:center;
+  }
+  .tip-btn:hover, .tip-btn:focus-visible{ border-color:var(--accent); color:var(--accent-ink); outline:none; }
+  .tip-box{
+    position:absolute; left:-8px; top:calc(100% + 8px); z-index:5; width:min(280px, 78vw);
+    background:var(--ink); color:var(--bg); font-size:12px; line-height:1.5; font-weight:400;
+    padding:9px 11px; border-radius:7px; box-shadow:var(--shadow);
+    opacity:0; visibility:hidden; transform:translateY(-2px); transition:opacity .12s ease, transform .12s ease, visibility .12s;
+  }
+  .tip-box b{ font-weight:600; }
+  .tip:hover .tip-box, .tip-btn:focus + .tip-box{ opacity:1; visibility:visible; transform:none; }
   .form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   .form-grid .full{ grid-column:1 / -1; }
   .testcards{ display:flex; gap:6px; flex-wrap:wrap; }
@@ -239,7 +255,7 @@
       <div class="card">
         <span class="card-label">Your checkout form</span>
         <div class="form-grid">
-          <div class="field"><label for="f-name">Cardholder name</label><input id="f-name" value="Ada Lovelace" autocomplete="off"></div>
+          <div class="field"><span class="label-row"><label for="f-name">Cardholder name</label><span class="tip"><button type="button" class="tip-btn" aria-label="Who is Ada Lovelace?" aria-describedby="tip-ada">i</button><span class="tip-box" id="tip-ada" role="tooltip"><b>Ada Lovelace</b> (1815–1852) was an English mathematician, often called the first computer programmer. She wrote what's considered the first published algorithm, for Charles Babbage's Analytical Engine. Her name is a classic in sample data, like Alice and Bob.</span></span></span><input id="f-name" value="Ada Lovelace" autocomplete="off"></div>
           <div class="field"><label for="f-email">Email</label><input id="f-email" value="ada@example.com" autocomplete="off"></div>
           <div class="field full"><label for="f-number">Card number</label><input id="f-number" value="4111 1111 1111 1111" inputmode="numeric" autocomplete="off"></div>
           <div class="field"><label for="f-exp">Expiry</label><input id="f-exp" value="12/28" autocomplete="off"></div>
