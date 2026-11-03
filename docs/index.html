@@ -57,6 +57,7 @@
   .meta-row{ display:flex; flex-wrap:wrap; gap:6px 18px; margin-top:6px; }
   .meta-row span{ font-family:"IBM Plex Mono", monospace; font-size:12px; color:var(--ink-faint); white-space:nowrap; }
   .meta-row span b{ color:var(--ink-muted); font-weight:500; }
+  .meta-row a{ color:var(--accent-ink); text-decoration-thickness:1px; text-underline-offset:2px; }
 
   .note{ background:var(--note-bg); border:1px solid var(--note-border); border-radius:10px; padding:12px 16px; font-size:13px; line-height:1.55; margin-top:24px; }
   .note a{ color:var(--accent-ink); }
@@ -234,6 +235,7 @@
     <h1>What the VGS proxy actually does to your traffic</h1>
     <p class="dek">Very Good Security sits in the network path in front of your servers. Card numbers get swapped for aliases on the way in and swapped back on the way out, so your own systems never hold the real values. Type a card below, send it through, and watch what each hop sees.</p>
     <div class="meta-row">
+      <span><b>By</b> <a href="https://www.linkedin.com/in/ddeuber/" target="_blank" rel="noopener">David Deuber</a></span>
       <span><b>Inbound</b> reverse proxy &middot; REDACT</span>
       <span><b>Outbound</b> forward proxy &middot; REVEAL</span>
       <span><b>Runs</b> 100% in your browser</span>
@@ -446,7 +448,7 @@
   </section>
 
   <footer>
-    Interactive simulation, no real VGS calls, no data leaves your browser &middot; aliases generated locally in VGS-style formats &middot; concepts per the <a href="https://docs.verygoodsecurity.com/" target="_blank" rel="noopener">VGS documentation</a> &middot; source: <a href="https://github.com/deuber/vgs-proxy-demo" target="_blank" rel="noopener">github.com/deuber/vgs-proxy-demo</a> &middot; not affiliated with Very Good Security
+    Built by <a href="https://www.linkedin.com/in/ddeuber/" target="_blank" rel="noopener">David Deuber</a> &middot; Interactive simulation, no real VGS calls, no data leaves your browser &middot; aliases generated locally in VGS-style formats &middot; concepts per the <a href="https://docs.verygoodsecurity.com/" target="_blank" rel="noopener">VGS documentation</a> &middot; source: <a href="https://github.com/deuber/vgs-proxy-demo" target="_blank" rel="noopener">github.com/deuber/vgs-proxy-demo</a> &middot; not affiliated with Very Good Security
   </footer>
 </div>
 
