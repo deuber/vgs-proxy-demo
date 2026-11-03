@@ -224,7 +224,7 @@
     </div>
     <div class="note">
       <b>This is a simulation.</b> Nothing you type leaves this page: no VGS vault and no network calls. Aliases are made locally to look like real VGS alias formats, and the route config below has the same shape as a VGS route export. Use test card numbers only. For the real thing, see the
-      <a href="https://www.verygoodsecurity.com/docs/" target="_blank" rel="noopener">VGS docs</a>.
+      <a href="https://docs.verygoodsecurity.com/" target="_blank" rel="noopener">VGS docs</a>.
     </div>
   </header>
 
@@ -420,17 +420,17 @@
     <p class="lede">These steps follow <a href="https://www.youtube.com/watch?v=2Aex2VpcvCE" target="_blank" rel="noopener" style="color:var(--accent-ink)">VGS HTTP Proxy (a quick walk through)</a> from the VGS integration team. Its advice: set up the routes first, and leave the form until last.</p>
     <div class="aside" style="grid-template-columns:1fr;">
       <ul class="gotchas">
-        <li><div><b>Inbound route: Routes → Inbound → Add.</b><span>Upstream is your server with the database. That's where the aliases get stored. Set the path and content type, then add a REDACT filter on the card number with <i>persistent</i> storage (19-digit fixed length is common) and one on the CVC with <i>volatile</i> storage.</span></div></li>
-        <li><div><b>Outbound route: Routes → Outbound → Add.</b><span>Upstream is the third party, such as Stripe, WorldPay or Adyen. Set the path you're calling (<code>/payments</code>, <code>/customers</code>, whatever it is), then add REVEAL filters for the same fields: one for the persistent card number, one for the volatile CVC.</span></div></li>
+        <li><div><b>Inbound route: Routes → Inbound → Add.</b><span>Upstream is your server with the database. That's where the aliases get stored. Set the path and content type, then add a REDACT filter on the card number with <i>persistent</i> storage (19-digit fixed length is common) and one on the CVC with <i>volatile</i> storage. Docs: <a style="color:var(--accent-ink)" target="_blank" rel="noopener" href="https://docs.verygoodsecurity.com/vault/http-proxy/inbound-connection">Inbound Routes</a>.</span></div></li>
+        <li><div><b>Outbound route: Routes → Outbound → Add.</b><span>Upstream is the third party, such as Stripe, WorldPay or Adyen. Set the path you're calling (<code>/payments</code>, <code>/customers</code>, whatever it is), then add REVEAL filters for the same fields: one for the persistent card number, one for the volatile CVC. Docs: <a style="color:var(--accent-ink)" target="_blank" rel="noopener" href="https://docs.verygoodsecurity.com/vault/http-proxy/outbound-connection">Outbound Routes</a>.</span></div></li>
         <li><div><b>Logs → record payloads.</b><span>Now every request shows which filters succeeded and the body before and after.</span></div></li>
         <li><div><b>Test with curl or Postman.</b><span>The dashboard gives you code snippets. Send a card to the vault URL and check that your server receives aliases. Then send the charge through the forward proxy and check in Logs that the third party got the real values.</span></div></li>
-        <li><div><b>Then build the real form with VGS Collect.</b><span>Start from the examples on GitHub (vgs-collect examples). Do the reveal call on your server in Python, Java, Node, or whatever you use.</span></div></li>
+        <li><div><b>Then build the real form with VGS Collect.</b><span>Start from the <a style="color:var(--accent-ink)" target="_blank" rel="noopener" href="https://github.com/vgs-samples/vgs-collect-examples">vgs-collect-examples</a> repo and the <a style="color:var(--accent-ink)" target="_blank" rel="noopener" href="https://docs.verygoodsecurity.com/vault/developer-tools/vgs-collect/js">VGS Collect JS docs</a>. Do the reveal call on your server in Python, Java, Node, or whatever you use.</span></div></li>
       </ul>
     </div>
   </section>
 
   <footer>
-    Interactive simulation, no real VGS calls, no data leaves your browser &middot; aliases generated locally in VGS-style formats &middot; concepts per the <a href="https://www.verygoodsecurity.com/docs/" target="_blank" rel="noopener">VGS documentation</a> &middot; source: <a href="https://github.com/deuber/vgs-proxy-demo" target="_blank" rel="noopener">github.com/deuber/vgs-proxy-demo</a> &middot; not affiliated with Very Good Security
+    Interactive simulation, no real VGS calls, no data leaves your browser &middot; aliases generated locally in VGS-style formats &middot; concepts per the <a href="https://docs.verygoodsecurity.com/" target="_blank" rel="noopener">VGS documentation</a> &middot; source: <a href="https://github.com/deuber/vgs-proxy-demo" target="_blank" rel="noopener">github.com/deuber/vgs-proxy-demo</a> &middot; not affiliated with Very Good Security
   </footer>
 </div>
 

@@ -14,6 +14,12 @@ An interactive, single-page walkthrough of how the [Very Good Security](https://
 - **Generated config:** an illustrative route YAML and the code changes (curl to the vault URL, Python `requests` through the forward proxy), both kept in sync with your filter choices.
 - **Real setup steps**, following VGS's own [HTTP Proxy walkthrough](https://www.youtube.com/watch?v=2Aex2VpcvCE).
 
+## VGS references
+
+- [VGS docs](https://docs.verygoodsecurity.com/)
+- [Inbound Routes](https://docs.verygoodsecurity.com/vault/http-proxy/inbound-connection) · [Outbound Routes](https://docs.verygoodsecurity.com/vault/http-proxy/outbound-connection)
+- [VGS Collect JS](https://docs.verygoodsecurity.com/vault/developer-tools/vgs-collect/js) · [vgs-collect-examples](https://github.com/vgs-samples/vgs-collect-examples)
+
 ## Honest scope
 
 This is a **simulation**. It runs entirely in the browser, makes no network calls and has no VGS account behind it. Aliases are generated locally to look like VGS alias formats, and the route YAML has the same shape as a VGS export but is trimmed down. Use test card numbers only. Not affiliated with VGS.
