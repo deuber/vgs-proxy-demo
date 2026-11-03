@@ -241,7 +241,7 @@
       <span><b>Runs</b> 100% in your browser</span>
     </div>
     <div class="note">
-      <b>This is a simulation.</b> Nothing you type leaves this page: no VGS vault and no network calls. Aliases are made locally to look like real VGS alias formats, and the route config below has the same shape as a VGS route export. Use test card numbers only. For the real thing, see the
+      <b>This is a simulation.</b> Nothing you type leaves this page: no VGS vault and no network calls. Aliases are made locally to look like real VGS alias formats, and the route config below has the same shape as a VGS route export. A run that works here doesn't validate a real vault, route or payment integration. Use test card numbers only. For the real thing, see the
       <a href="https://docs.verygoodsecurity.com/" target="_blank" rel="noopener">VGS docs</a>.
     </div>
   </header>
@@ -404,8 +404,8 @@
         <div class="pre-wrap"><pre class="console" id="yaml"></pre></div>
       </div>
       <div class="card">
-        <div class="card-head"><span class="card-label">What changes in your code</span></div>
-        <div class="card-title"><b>Inbound:</b> the form posts to your vault's URL instead of your API. Test with curl or Postman first, then switch the real form to <b>VGS Collect</b> (hosted fields, so your page's JS never touches the card either). <b>Outbound:</b> your backend sends the charge through VGS as an HTTPS proxy and trusts VGS's CA certificate.</div>
+        <div class="card-head"><span class="card-label">What changes in your code &middot; illustrative</span></div>
+        <div class="card-title"><b>Inbound:</b> the form posts to your vault's URL instead of your API. Test with curl or Postman first, then switch the real form to <b>VGS Collect</b> (hosted fields, so your page's JS never touches the card either). <b>Outbound:</b> your backend sends the charge through VGS as an HTTPS proxy and trusts VGS's CA certificate. The proxy credentials belong on your server only. Never put them in browser or mobile code.</div>
         <div class="pre-wrap"><pre class="console" id="codeIn"></pre></div>
         <div class="pre-wrap"><pre class="console" id="codeOut"></pre></div>
       </div>
@@ -421,7 +421,7 @@
       <ul class="gotchas">
         <li><div><b>Filters match by condition, not by magic.</b><span>Switch the form to <code>x-www-form-urlencoded</code> and submit again. The route expects <code>application/json</code>, so it doesn't match and the request goes through untouched. The real card reaches your backend, and nothing errors to tell you.</span></div></li>
         <li><div><b>The outbound proxy terminates TLS on purpose.</b><span>To rewrite an encrypted request body, VGS has to decrypt it. That's why your HTTP client is given VGS's CA cert (<code>verify="sandbox.pem"</code>). Without it, you get certificate errors on every outbound call.</span></div></li>
-        <li><div><b>CVC goes in volatile storage.</b><span>PCI DSS doesn't let you keep the CVC after it's used. VGS's walkthrough sets the CVC filter to volatile storage, which is only good for about an hour. Charge with it right away, and remember to add a matching REVEAL filter for it on the outbound route.</span></div></li>
+        <li><div><b>CVC goes in volatile storage.</b><span>PCI DSS doesn't let you keep the CVC after authorization. VGS's walkthrough sets the CVC filter to volatile storage, which only keeps it for about an hour. That's a safety net, not permission to hold onto it. Charge with it right away, and remember to add a matching REVEAL filter for it on the outbound route.</span></div></li>
         <li><div><b>Turn on payload logging while you test.</b><span>In the dashboard, open Logs and record payloads. Each request then shows which filters fired, and you can see the redacted body inbound and the revealed body outbound. That's the fastest way to catch the Content-Type mismatch in #01.</span></div></li>
         <li><div><b>The alias format is a product decision.</b><span>A format-preserving alias (keeps the first 6 and last 4, passes the Luhn check) gets through your existing card validation and still shows "Visa &bull;&bull;&bull;&bull; 1111" correctly. A random <code>tok_</code> alias is obviously not a card, so nothing can mistake it for one.</span></div></li>
         <li><div><b>Aliasing a field you later need breaks things.</b><span>Redact the cardholder name and your backend can no longer personalize the receipt email. It only has the alias. Redact what you never need to read yourself.</span></div></li>
@@ -920,6 +920,7 @@ function renderConfig(){
   $("codeOut").textContent =
     "# outbound: send the charge through the forward proxy\n" +
     "import requests\n\n" +
+    "# server-side only: load credentials from env/secrets, never ship them to a browser\n" +
     "proxies = {\"https\": \"https://USERNAME:PASSWORD@" + VAULT_HOST + ":8443\"}\n\n" +
     "requests.post(\"https://" + PROC_HOST + "/charges\",\n" +
     "              json=charge,              # contains aliases\n" +
