@@ -63,6 +63,24 @@
   .note a{ color:var(--accent-ink); }
   .note code{ background:var(--surface); padding:1px 5px; border-radius:4px; }
 
+  html{ scroll-behavior:smooth; }
+  @media (prefers-reduced-motion: reduce){ html{ scroll-behavior:auto; } }
+  h2{ scroll-margin-top:24px; }
+  .toc{ margin-top:28px; display:flex; flex-direction:column; gap:10px; }
+  .toc-title{ font-family:"IBM Plex Mono", monospace; font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--ink-faint); }
+  .toc ol{ list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; counter-reset:toc; }
+  @media (max-width:680px){ .toc ol{ grid-template-columns:1fr 1fr; } }
+  @media (max-width:420px){ .toc ol{ grid-template-columns:1fr; } }
+  .toc li{ counter-increment:toc; }
+  .toc a{
+    display:flex; gap:10px; align-items:baseline; height:100%;
+    padding:9px 12px; border-radius:8px; border:1px solid var(--border); background:var(--surface);
+    font-size:13.5px; color:var(--ink); text-decoration:none; line-height:1.35;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .toc a::before{ content:counter(toc, decimal-leading-zero); font-family:"IBM Plex Mono", monospace; font-size:11px; color:var(--accent-ink); flex:none; }
+  .toc a:hover{ border-color:var(--accent); background:var(--surface-2); }
+  .toc a:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
   section{ margin-top:52px; }
   .section-head{ display:flex; align-items:baseline; justify-content:space-between; gap:16px; margin-bottom:18px; flex-wrap:wrap; }
   h2{ font-family:"Fraunces", Georgia, serif; font-weight:600; font-size:22px; letter-spacing:-0.005em; margin:0; color:var(--ink); }
@@ -266,6 +284,18 @@
       <a href="https://docs.verygoodsecurity.com/" target="_blank" rel="noopener">VGS docs</a>.
     </div>
   </header>
+
+  <nav class="toc" aria-label="On this page">
+    <span class="toc-title">On this page</span>
+    <ol>
+      <li><a href="#try-h">Run a checkout through it</a></li>
+      <li><a href="#hops-h">What every hop actually saw</a></li>
+      <li><a href="#cfg-h">The config behind it</a></li>
+      <li><a href="#wire-h">What happens on the wire</a></li>
+      <li><a href="#g-h">Things that trip people up</a></li>
+      <li><a href="#real-h">Setting it up for real</a></li>
+    </ol>
+  </nav>
 
   <section aria-labelledby="try-h">
     <div class="section-head">
