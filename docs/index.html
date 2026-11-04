@@ -233,7 +233,7 @@
   <header class="masthead">
     <div class="eyebrow">Personal project &middot; Data security</div>
     <h1>What the VGS proxy actually does to your traffic</h1>
-    <p class="dek">Very Good Security sits in the network path in front of your servers. Card numbers get swapped for aliases on the way in and swapped back on the way out, so your own systems never hold the real values. Type a card below, send it through, and watch what each hop sees.</p>
+    <p class="dek">Very Good Security sits in the network path in front of your servers. Card numbers get swapped for <i>aliases</i> (VGS's word for tokens) on the way in and swapped back on the way out, so your own systems never hold the real values. Type a card below, send it through, and watch what each hop sees.</p>
     <div class="meta-row">
       <span><b>By</b> <a href="https://www.linkedin.com/in/ddeuber/" target="_blank" rel="noopener">David Deuber</a></span>
       <span><b>Inbound</b> reverse proxy &middot; REDACT</span>
@@ -251,7 +251,7 @@
       <h2 id="try-h">Run a checkout through it</h2>
       <span class="section-note">POST /checkout &rarr; POST /charges</span>
     </div>
-    <p class="lede">On the left is a checkout form from your website. On the right are the inbound route's <i>filters</i>: the fields VGS will replace with aliases before the request reaches your API.</p>
+    <p class="lede">On the left is a checkout form from your website. On the right are the inbound route's <i>filters</i>: the fields VGS will replace with aliases before the request reaches your API. Redact means tokenize, and reveal means detokenize. Because the aliases live in VGS's vault rather than a processor's, the same one works with any processor.</p>
 
     <div class="grid">
       <div class="card">
@@ -370,7 +370,7 @@
       </svg>
       <div class="legend">
         <span><i style="background:var(--err)"></i>raw sensitive value</span>
-        <span><i style="background:var(--accent)"></i>VGS alias</span>
+        <span><i style="background:var(--accent)"></i>VGS alias (token)</span>
         <span><i style="border:1px dashed var(--ink-faint)"></i>your infrastructure, where compliance scope lives</span>
       </div>
       <figcaption id="figcap">VGS shows up twice, once on each side of your backend. Both proxies use the same vault, so an alias made on the way in can be turned back into the real value on the way out, and your backend only ever passes the alias along.</figcaption>
