@@ -223,6 +223,27 @@
   .gotchas b{ display:block; font-size:14.5px; color:var(--ink); margin-bottom:3px; }
   .gotchas span{ font-size:14px; line-height:1.55; color:var(--ink-muted); }
 
+  .wire{ display:flex; flex-direction:column; }
+  .wire-leg{ font-family:"IBM Plex Mono", monospace; font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--ink-faint); padding:14px 0 6px; }
+  .wire-leg:first-child{ padding-top:0; }
+  .wire-row{ display:grid; grid-template-columns:76px 170px 1fr; gap:4px 14px; padding:8px 0; border-top:1px solid var(--border); align-items:baseline; }
+  .wire-step{ font-family:"IBM Plex Mono", monospace; font-size:11px; font-weight:600; color:var(--ink); background:var(--surface-2); border:1px solid var(--border); border-radius:5px; padding:2px 7px; width:fit-content; }
+  .wire-who{ font-family:"IBM Plex Mono", monospace; font-size:11.5px; color:var(--ink-muted); }
+  .wire-text{ font-size:13.5px; line-height:1.5; color:var(--ink); }
+  .wire-text code{ font-family:"IBM Plex Mono", monospace; font-size:0.9em; background:var(--surface-2); border:1px solid var(--border); padding:0 4px; border-radius:4px; }
+  .wire-row.key .wire-step{ color:var(--accent-ink); border-color:color-mix(in srgb, var(--accent) 45%, transparent); background:color-mix(in srgb, var(--accent) 12%, transparent); }
+  .wire-row.key .wire-text{ font-weight:500; }
+  .wire-tag{ font-family:"IBM Plex Mono", monospace; font-size:10.5px; padding:1px 6px; border-radius:4px; margin-left:6px; white-space:nowrap; }
+  .wire-tag.raw{ color:var(--err); background:color-mix(in srgb, var(--err) 12%, transparent); }
+  .wire-tag.alias{ color:var(--accent-ink); background:color-mix(in srgb, var(--accent) 14%, transparent); }
+  .wire-vgs{ margin:8px 0; padding:10px 12px; border-radius:8px; border:1px dashed var(--accent); background:color-mix(in srgb, var(--accent) 7%, var(--surface)); font-size:13.5px; line-height:1.5; color:var(--ink); }
+  .wire-vgs b{ font-family:"IBM Plex Mono", monospace; font-size:11px; letter-spacing:0.06em; color:var(--accent-ink); margin-right:6px; }
+  @media (max-width:680px){ .wire-row{ grid-template-columns:auto 1fr; } .wire-text{ grid-column:1 / -1; } }
+  table.breaks{ width:100%; border-collapse:collapse; font-size:13px; min-width:520px; }
+  table.breaks th{ text-align:left; font-family:"IBM Plex Mono", monospace; font-weight:500; color:var(--ink-faint); font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em; padding:0 10px 6px 0; border-bottom:1px solid var(--border); }
+  table.breaks td{ padding:8px 10px 8px 0; border-bottom:1px solid var(--border); vertical-align:top; line-height:1.45; color:var(--ink-muted); }
+  table.breaks td:first-child{ font-family:"IBM Plex Mono", monospace; font-size:11.5px; color:var(--ink); white-space:nowrap; }
+  table.breaks td.s{ font-family:"IBM Plex Mono", monospace; font-size:11.5px; color:var(--err); }
   footer{ margin-top:56px; padding-top:20px; border-top:1px solid var(--border-strong); font-family:"IBM Plex Mono", monospace; font-size:11.5px; color:var(--ink-faint); line-height:1.7; }
   footer a{ color:var(--ink-faint); }
 </style>
@@ -408,6 +429,42 @@
         <div class="card-title"><b>Inbound:</b> the form posts to your vault's URL instead of your API. Test with curl or Postman first, then switch the real form to <b>VGS Collect</b> (hosted fields, so your page's JS never touches the card either). <b>Outbound:</b> your backend sends the charge through VGS as an HTTPS proxy and trusts VGS's CA certificate. The proxy credentials belong on your server only. Never put them in browser or mobile code.</div>
         <div class="pre-wrap"><pre class="console" id="codeIn"></pre></div>
         <div class="pre-wrap"><pre class="console" id="codeOut"></pre></div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="wire-h">
+    <div class="section-head">
+      <h2 id="wire-h">What happens on the wire</h2>
+      <span class="section-note">DNS &rarr; TCP &rarr; TLS &rarr; HTTP</span>
+    </div>
+    <p class="lede">Normally a request has one DNS lookup, one TCP connection and one TLS handshake, and it's encrypted from end to end. With VGS, each direction has <b>two complete legs</b>, and VGS sits in the middle on purpose, decrypting so it can rewrite the body.</p>
+    <div class="flow-toggle" id="wireToggle" role="group" aria-label="Choose which connection to show" style="margin-bottom:14px;">
+      <button type="button" class="flow-btn active" data-wire="normal" aria-pressed="true">Normal HTTPS</button>
+      <button type="button" class="flow-btn" data-wire="inbound" aria-pressed="false">Inbound via VGS</button>
+      <button type="button" class="flow-btn" data-wire="outbound" aria-pressed="false">Outbound via VGS</button>
+    </div>
+    <div class="card">
+      <div class="wire" id="wire" aria-live="polite"></div>
+      <div class="card-title" id="wireCap" style="border-top:1px solid var(--border); padding-top:12px;"></div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <div class="card-head"><span class="card-label err">Where it breaks</span><span class="tally">which leg failed?</span></div>
+      <div class="card-title">When something goes wrong, the first question is which of the four connections broke: client to VGS or VGS to upstream, inbound or outbound. Then confirm it in the VGS logs.</div>
+      <div style="overflow-x:auto;">
+        <table class="breaks">
+          <thead><tr><th>Step</th><th>Customer sees</th><th>Likely cause</th></tr></thead>
+          <tbody>
+            <tr><td>Inbound leg 1</td><td>Browser can't connect</td><td>Wrong vault ID or environment in the URL (sandbox vs live)</td></tr>
+            <tr><td>Inbound leg 2</td><td class="s">502 / 504 from VGS</td><td>VGS can't reach the upstream: a firewall blocking VGS IPs, the server is down, or the upstream host is wrong</td></tr>
+            <tr><td>Inbound leg 2 TLS</td><td class="s">502</td><td>The customer's server certificate is expired or invalid, so VGS refuses it</td></tr>
+            <tr><td>Outbound proxy auth</td><td class="s">407 Proxy Authentication Required</td><td>Wrong proxy credentials, or sandbox credentials used against a live vault</td></tr>
+            <tr><td>Outbound leg 1 TLS</td><td class="s">CERTIFICATE_VERIFY_FAILED</td><td>The client isn't trusting the VGS CA cert, or has the other environment's cert</td></tr>
+            <tr><td>Outbound leg 2</td><td>Timeout / connection refused</td><td>The processor allowlists source IPs, and VGS's egress IPs aren't on the list</td></tr>
+            <tr><td>Any leg</td><td>Request "works", but data isn't redacted or revealed</td><td>No route or filter matched (path, Content-Type, JSONPath), so VGS passed the request through untouched</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </section>
@@ -977,8 +1034,68 @@ function runOutbound(){
   });
 }
 
+// ---- "what happens on the wire" ladders ----
+var WIRE = {
+  normal: {
+    cap: "One connection end to end. Nothing in between can read the body, which is exactly why VGS has to do things differently.",
+    rows: [
+      { step: "DNS",  who: "Browser",            text: "<code>" + API_HOST + "</code> → your server's IP" },
+      { step: "TCP",  who: "Browser → server",   text: "Connects to port 443" },
+      { step: "TLS",  who: "Browser ↔ server",   text: "Your server presents its certificate, and the browser verifies it" },
+      { step: "HTTP", who: "Browser → server",   text: "<code>POST /checkout</code>, encrypted end to end", tag: "raw" }
+    ]
+  },
+  inbound: {
+    cap: "To the browser, VGS is just an ordinary HTTPS site, so inbound needs no special certificate. Your server sees requests arriving from VGS's IP addresses, not the customer's, which matters for firewalls, allowlists and client-IP logging.",
+    rows: [
+      { leg: "Leg 1 · browser → VGS" },
+      { step: "DNS",  who: "Browser",           text: "<code>" + VAULT_HOST + "</code> → a VGS IP" },
+      { step: "TCP",  who: "Browser → VGS",     text: "Connects to VGS on port 443" },
+      { step: "TLS",  who: "Browser ↔ VGS",     text: "VGS presents its own public certificate (<code>*.verygoodproxy.com</code>). The browser trusts it like any other site" },
+      { step: "HTTP", who: "Browser → VGS",     text: "<code>POST /checkout</code> with the real card", tag: "raw" },
+      { vgs: "VGS DECRYPTS", text: "VGS matches the inbound route, then <b style=\"font-family:inherit;letter-spacing:0;color:inherit;\">REDACTs</b> the filtered fields into aliases." },
+      { leg: "Leg 2 · VGS → your server (upstream)" },
+      { step: "DNS",  who: "VGS",               text: "Resolves your upstream, <code>" + API_HOST + "</code>" },
+      { step: "TCP",  who: "VGS → server",      text: "Opens a new connection to your server on port 443" },
+      { step: "TLS",  who: "VGS ↔ server",      text: "<b>Your</b> server presents <b>your</b> certificate, and VGS verifies it" },
+      { step: "HTTP", who: "VGS → server",      text: "<code>POST /checkout</code>, now carrying aliases", tag: "alias" }
+    ]
+  },
+  outbound: {
+    cap: "A normal forward proxy only tunnels encrypted bytes it can't read. VGS needs to rewrite the body, so it terminates TLS and stands in for the processor's certificate. Your HTTP client accepts that only because you told it to trust the VGS CA. That's the entire reason the cert file exists. Exact ports and auth details come from your vault's dashboard snippets.",
+    rows: [
+      { leg: "Leg 1 · your server → VGS (forward proxy)" },
+      { step: "DNS",     who: "Your server",    text: "Resolves the <b>proxy</b> host (<code>" + VAULT_HOST + "</code>), not the processor" },
+      { step: "TCP",     who: "Server → VGS",   text: "Connects to the VGS proxy port (<code>8443</code> in the snippet above)" },
+      { step: "AUTH",    who: "Server → VGS",   text: "Proxy credentials (<code>USERNAME:PASSWORD</code>) identify your vault. Wrong credentials return a 407" },
+      { step: "CONNECT", who: "Server → VGS",   text: "<code>CONNECT " + PROC_HOST + ":443</code> asks the proxy to tunnel to the processor" },
+      { step: "TLS",     who: "Server ↔ VGS",   text: "Your client expects the processor's certificate. VGS presents one for <code>" + PROC_HOST + "</code> <b>signed by the VGS CA</b>. It's accepted only because you passed <code>sandbox.pem</code>", key: true },
+      { step: "HTTP",    who: "Server → VGS",   text: "<code>POST /charges</code> with aliases", tag: "alias" },
+      { vgs: "VGS DECRYPTS", text: "VGS matches the outbound route, then <b style=\"font-family:inherit;letter-spacing:0;color:inherit;\">REVEALs</b> the aliases, swapping the real values back in from the vault." },
+      { leg: "Leg 2 · VGS → processor" },
+      { step: "DNS",  who: "VGS",               text: "Resolves <code>" + PROC_HOST + "</code>" },
+      { step: "TCP",  who: "VGS → processor",   text: "Opens a new connection to the processor on port 443" },
+      { step: "TLS",  who: "VGS ↔ processor",   text: "The processor presents its <b>real</b> certificate, and VGS verifies it" },
+      { step: "HTTP", who: "VGS → processor",   text: "<code>POST /charges</code> with the real card. It comes from VGS's egress IPs", tag: "raw" }
+    ]
+  }
+};
+
+function renderWire(key){
+  var w = WIRE[key];
+  $("wire").innerHTML = w.rows.map(function(r){
+    if (r.leg) return '<div class="wire-leg">' + esc(r.leg) + "</div>";
+    if (r.vgs) return '<div class="wire-vgs"><b>' + esc(r.vgs) + "</b>" + r.text + "</div>";
+    var tag = r.tag ? '<span class="wire-tag ' + r.tag + '">' + (r.tag === "raw" ? "raw card" : "aliases") + "</span>" : "";
+    return '<div class="wire-row' + (r.key ? " key" : "") + '"><span class="wire-step">' + esc(r.step) + '</span><span class="wire-who">' + esc(r.who) + '</span><span class="wire-text">' + r.text + tag + "</span></div>";
+  }).join("");
+  $("wireCap").textContent = w.cap;
+}
+
 function init(){
   renderFilters();
+  wireToggle("wireToggle", "data-wire", function(k){ renderWire(k); });
+  renderWire("normal");
   wireToggle("modeToggle", "data-mode", function(m, b){ state.mode = m; if (m === "direct") b.classList.add("err"); reset(); });
   wireToggle("ctypeToggle", "data-ctype", function(c, b){ state.ctype = c; if (c === "form") b.classList.add("err"); reset(); });
   document.querySelectorAll(".testcards button").forEach(function(b){
